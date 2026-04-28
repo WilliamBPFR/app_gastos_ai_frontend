@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
+import { useRouter } from "next/navigation"
+import { Spinner } from "@/components/ui/spinner"
+import {toast} from "sonner"
 import {
   Wallet,
   TrendingUp,
@@ -16,16 +19,50 @@ import {
   Send,
 } from "lucide-react"
 
+import { authService } from "@/services/authService"
+import { ApiRequestError } from "@/axiosConfig/apiRequest"
+
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [rememberMe, setRememberMe] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const router = useRouter()
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault()
+    setLoading(true)
     // Handle login logic here
-    console.log({ email, password, rememberMe })
+    try {
+      // Simulate API call
+      await authService.login(email, password, rememberMe).then((response) => {
+        authService.saveAccessToken(response.access_token)
+        setLoading(false)
+        toast.success("Login successful! Redirecting...", {
+          duration: 1300,
+        })
+        setTimeout(() => {
+          router.push("/v1/dashboard")
+        }, 1500);
+      })
+    } catch (error: any) {
+      console.error("Error sending verification code:", error)
+      if (error instanceof ApiRequestError && error.status != 500) {
+        toast.error("Login failed", {
+          description: "Email or password is incorrect. Please try again.",
+          duration: 5000,
+        })
+      } else {
+        toast.error("An unexpected error occurred. Please try again later.", {
+          duration: 5000,
+        })
+      }
+    } finally {
+      setTimeout(() => {
+        setLoading(false)
+      }, 3000);
+    }
   }
 
   return (
@@ -202,9 +239,18 @@ export default function LoginPage() {
                 </div>
 
                 {/* Login Button */}
-                <Button type="submit" className="w-full h-11 text-base font-medium">
-                  Log in
-                  <ArrowRight className="w-4 h-4 ml-1" />
+                <Button type="submit" className="w-full h-11 text-base font-medium" disabled={loading}>
+                  {loading ? (
+                    <>
+                      <Spinner className="w-5 h-5 text-white" /> 
+                      Loggin in...
+                    </>
+                  ) : (
+                    <>
+                      Log in
+                      <ArrowRight className="w-4 h-4 ml-1" />
+                    </>
+                  )}
                 </Button>
               </form>
 

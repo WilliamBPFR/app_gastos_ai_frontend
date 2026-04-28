@@ -5,11 +5,11 @@ import {
 } from "@/types/auth_types";
 
 export const authService = {
-    login: async (email: string, password: string) => {
+    login: async (email: string, password: string, rememberMe: boolean) => {
         return apiRequest<LoginResponse, LoginRequest>({
             method: "POST",
             url: "/auth/login",
-            data: { email, password },
+            data: { email, password, rememberMe },
         });
     },
 
@@ -20,6 +20,4 @@ export const authService = {
     clearAccessToken: () => {
         localStorage.removeItem("access_token");
     }
-
-
 }
