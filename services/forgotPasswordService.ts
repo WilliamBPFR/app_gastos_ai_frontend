@@ -9,7 +9,7 @@ export const forgotPasswordService = {
     requestPasswordReset: async (email: string) => {
         return apiRequest<GeneralResponse>({
             method: "POST",
-            url: "/app/forgot-password/create-petition",
+            url: "/forgot-password/create-petition",
             params: { email },
         });
     },
@@ -17,7 +17,7 @@ export const forgotPasswordService = {
     requestVerifyCode: async (user_email: string, reset_code: string) => {
         return apiRequest<GeneralResponse, VerifyCodeRequest>({
             method: "POST",
-            url: "/app/forgot-password/verify-reset-code",
+            url: "/forgot-password/verify-reset-code",
             data: { user_email, reset_code },
         });
     },
@@ -25,7 +25,7 @@ export const forgotPasswordService = {
     requestPasswordResetConfirmation: async (user_email: string, new_password: string) => {
         return apiRequest<GeneralResponse, PasswordResetConfirmationRequest>({
             method: "POST",
-            url: "/app/forgot-password/confirm-password-reset",
+            url: "/forgot-password/confirm-password-reset",
             data: { user_email, new_password },
         });
     },
@@ -33,7 +33,7 @@ export const forgotPasswordService = {
     requestResendCode: async (email: string) => {
         return apiRequest<GeneralResponse>({
             method: "POST",
-            url: "/app/forgot-password/resend-reset-code",
+            url: "/forgot-password/resend-reset-code",
             params: { email },
         });
     }
