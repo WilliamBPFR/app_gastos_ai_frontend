@@ -5,7 +5,7 @@ import {
   CreateUserRequest,
   CreateUserResponse,
   User,
-} from "@/types/example_types";
+} from "@/types/general_response_types";
 
 export const userService = {
   getUsers: async () => {

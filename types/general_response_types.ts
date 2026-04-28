@@ -17,3 +17,7 @@ export interface CreateUserResponse {
   message: string;
   user: User;
 }
+
+export interface GeneralResponse{
+  message: string;
+}

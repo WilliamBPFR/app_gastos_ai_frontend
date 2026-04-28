@@ -5,6 +5,10 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Spinner } from "@/components/ui/spinner"
+import {toast} from "sonner"
+import { ApiRequestError } from "@/axiosConfig/apiRequest"
+import { useRouter } from "next/navigation"
 import {
   InputOTP,
   InputOTPGroup,
@@ -24,6 +28,11 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
+import {
+  forgotPasswordService
+} from "@/services/forgotPasswordService"
+import { set } from "date-fns"
+
 type Step = 1 | 2 | 3
 
 const steps = [
@@ -42,6 +51,8 @@ export default function ForgotPasswordPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [countdown, setCountdown] = useState(0)
   const [isTransitioning, setIsTransitioning] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const router = useRouter()
 
   // Countdown timer for resend
   useEffect(() => {
@@ -59,35 +70,133 @@ export default function ForgotPasswordPage() {
     }, 150)
   }
 
-  const handleSendCode = (e: React.FormEvent) => {
+  const handleSendCode = async (e: React.SubmitEvent) => {
     e.preventDefault()
-    // Simulate sending code
-    setCountdown(60)
-    handleStepTransition(2)
+    setLoading(true)
+
+    try {
+      setCountdown(60)
+      await forgotPasswordService.requestPasswordReset(email)
+      handleStepTransition(2)
+    } catch (error) {
+      console.error("Error sending verification code:", error)
+      if (error instanceof ApiRequestError && error.status === 404) {
+        toast.error("Email not found",
+          {
+            description: "Please check the email address and try again.",
+            duration: 3000,
+          }
+        )
+      } else {
+        toast.error("Failed to send verification code",
+          {
+            description: "Please check your email and try again.",
+          }
+        )
+      }
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handleVerifyCode = (e: React.FormEvent) => {
+  const handleVerifyCode = async (e: React.SubmitEvent) => {
     e.preventDefault()
-    handleStepTransition(3)
+    setLoading(true)
+    try {
+      // Simulate API call to verify code
+      await forgotPasswordService.requestVerifyCode(email, otp)
+      handleStepTransition(3)
+    } catch (error) {
+      console.error("Error sending verification code:", error)
+      if (error instanceof ApiRequestError && error.status === 404 || error instanceof ApiRequestError && error.status === 400) {
+        toast.error("Invalid verification code",
+          {
+            description: "Please check the code and try again. If you didn't receive it, you can resend the code.",
+            duration: 3000,
+          }
+        )
+      } else {
+        toast.error("Failed to verify code",
+          {
+            description: "We couldn't verify the code. Please check it and try again.",
+          }
+        )
+      }
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handleResetPassword = (e: React.FormEvent) => {
+  const handleResetPassword = (e: React.SubmitEvent) => {
     e.preventDefault()
+    setLoading(true)
     // Handle password reset
-    console.log({ email, otp, newPassword })
+    try{
+      forgotPasswordService.requestPasswordResetConfirmation(email, newPassword)
+      toast.success("Password reset successful",
+        {
+          description: "You can now log in with your new password.",
+          duration: 3000,
+        }
+      )
+      setTimeout(() => {
+        router.push("/")
+      }, 3250)
+
+    } catch(error){
+      console.error("Error resetting password:", error)
+      toast.error("Failed to reset password",
+        {
+          description: "Please try again later.",
+        }
+      )
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleResendCode = () => {
     if (countdown === 0) {
       setCountdown(60)
+      try{
+        forgotPasswordService.requestPasswordReset(email)
+        toast.success("Verification code resent",
+          {
+            description: "Please check your email for the new code.",
+          }
+        )
+      } catch(error){
+        console.error("Error resending verification code:", error)
+        if (error instanceof ApiRequestError && error.status === 404) {
+          toast.error("Email not found",
+            {
+              description: "Please check the email address and try again.",
+              duration: 3000,
+            }
+          )
+        } else {  
+          toast.error("Failed to resend verification code",
+            {
+              description: "Please check your email and try again.",
+            }
+          )
+        }
       // Simulate resending code
+      }
     }
   }
 
   const handleBack = () => {
+    if (currentStep === 2) {
+      setOtp("");
+
+    }
+    
     if (currentStep > 1) {
       handleStepTransition((currentStep - 1) as Step)
     }
+
+
   }
 
   // Password validation
@@ -289,9 +398,22 @@ export default function ForgotPasswordPage() {
                       />
                     </div>
 
-                    <Button type="submit" className="w-full h-11 text-base font-medium">
-                      Send code
-                      <ArrowRight className="w-4 h-4 ml-1" />
+                    <Button
+                      type="submit"
+                      className="w-full h-11 text-base font-medium"
+                      disabled={loading || email.trim() === ""}
+                    >
+                      {loading && currentStep === 1 ? (
+                        <>
+                          <Spinner className="mr-2 size-4" />
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          Send code
+                          <ArrowRight className="w-4 h-4 ml-1" />
+                        </>
+                      )}
                     </Button>
 
                     <div className="text-center">
@@ -363,10 +485,19 @@ export default function ForgotPasswordPage() {
                     <Button
                       type="submit"
                       className="w-full h-11 text-base font-medium"
-                      disabled={otp.length !== 6}
+                      disabled={otp.length !== 6 || loading}
                     >
-                      Verify code
-                      <ArrowRight className="w-4 h-4 ml-1" />
+                       {loading && currentStep === 2 ? (
+                        <>
+                          <Spinner className="mr-2 size-4" />
+                          Verifying...
+                        </>
+                      ) : (
+                        <>
+                          Verify code
+                          <ArrowRight className="w-4 h-4 ml-1" />
+                        </>
+                      )}
                     </Button>
 
                     <div className="text-center">
@@ -509,10 +640,19 @@ export default function ForgotPasswordPage() {
                     <Button
                       type="submit"
                       className="w-full h-11 text-base font-medium"
-                      disabled={passwordStrength < 4 || !passwordsMatch}
+                      disabled={passwordStrength < 4 || !passwordsMatch || loading}
                     >
-                      Reset password
-                      <ArrowRight className="w-4 h-4 ml-1" />
+                      {loading && currentStep === 3 ? (
+                        <>
+                          <Spinner className="mr-2 size-4" />
+                          Resetting...
+                        </>
+                      ) : (
+                        <>
+                          Reset password
+                          <ArrowRight className="w-4 h-4 ml-1" />
+                        </>
+                      )}
                     </Button>
 
                     <div className="text-center">
