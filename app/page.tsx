@@ -42,9 +42,7 @@ export default function LoginPage() {
         toast.success("Login successful! Redirecting...", {
           duration: 1300,
         })
-        setTimeout(() => {
-          router.push("/v1/dashboard")
-        }, 1500);
+        router.push("/v1/dashboard")
       })
     } catch (error: any) {
       console.error("Error sending verification code:", error)
@@ -58,10 +56,9 @@ export default function LoginPage() {
           duration: 5000,
         })
       }
+      setPassword("")
     } finally {
-      setTimeout(() => {
-        setLoading(false)
-      }, 3000);
+      setLoading(false)
     }
   }
 
