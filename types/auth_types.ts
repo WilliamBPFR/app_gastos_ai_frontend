@@ -5,6 +5,9 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  access_token: string;
-  token_type: string;
+  login_success: boolean;
+}
+
+export interface VerifyLoginResponse {
+  authenticated: boolean;
 }

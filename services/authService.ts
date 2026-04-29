@@ -1,7 +1,8 @@
 import { apiRequest } from "@/axiosConfig/apiRequest";
 import { 
     LoginRequest, 
-    LoginResponse 
+    LoginResponse,
+    VerifyLoginResponse 
 } from "@/types/auth_types";
 
 export const authService = {
@@ -13,11 +14,17 @@ export const authService = {
         });
     },
 
-    saveAccessToken: (token: string) => {
-        localStorage.setItem("access_token", token);
+    verifyLogin: async () => {
+        return apiRequest<VerifyLoginResponse, void>({
+            method: "GET",
+            url: "/auth/verify",
+        });
     },
 
-    clearAccessToken: () => {
-        localStorage.removeItem("access_token");
+    logout: async () => {
+        return apiRequest<void, void>({
+            method: "POST",
+            url: "/auth/logout",
+        });
     }
 }

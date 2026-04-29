@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { format } from "date-fns"
 import { DateRange } from "react-day-picker"
 import { cn } from "@/lib/utils"
@@ -23,6 +23,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+
+import { useCurrentUser } from "@/hooks/use-current-user"
+import { ContinualVerifyLoginWatcher } from "@/components/continualVerifyLoginWatcher";
+import { authService } from "@/services/authService"
 
 // Icons
 const WalletIcon = ({ className }: { className?: string }) => (
@@ -140,17 +144,26 @@ const navItems = [
 
 export default function DashboardLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode
-}) {
+}>) {
   const pathname = usePathname()
+  const router = useRouter()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: new Date(2026, 3, 1),
     to: new Date(2026, 3, 30),
   })
+  const { data: currentUser } = useCurrentUser()
+  const currentPageTitle = `${navItems.find((item) => item.href === pathname)?.title || "Dashboard"} - ${currentUser?.username || "User"}`
 
-  const currentPageTitle = navItems.find((item) => item.href === pathname)?.title || "Dashboard"
+  const handleLogout = async (redirectTo = "/") => {
+    try {
+      await authService.logout()
+    } finally {
+      router.replace(redirectTo)
+    }
+  }
 
   return (
     <TooltipProvider>
@@ -276,7 +289,7 @@ export default function DashboardLayout({
 
               {/* User Avatar */}
               <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
-                <span className="text-sm font-medium text-foreground">JD</span>
+                <span className="text-sm font-medium text-foreground">{currentUser?.name_initials}</span>
               </div>
 
               {/* More Menu */}
@@ -297,10 +310,15 @@ export default function DashboardLayout({
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href="/" className="text-destructive focus:text-destructive cursor-pointer">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => handleLogout()}
+                    >
                       <LogOutIcon className="mr-2 h-4 w-4" />
                       Log Out
-                    </Link>
+                    </Button>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -309,6 +327,7 @@ export default function DashboardLayout({
 
           {/* Page Content */}
           <main className="flex-1 overflow-auto p-6">
+            <ContinualVerifyLoginWatcher />
             {children}
           </main>
         </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -21,6 +21,7 @@ import {
 
 import { authService } from "@/services/authService"
 import { ApiRequestError } from "@/axiosConfig/apiRequest"
+import { useVerifyLoginOnce } from "@/hooks/use-check-login"
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -28,7 +29,50 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [rememberMe, setRememberMe] = useState(false)
   const [loading, setLoading] = useState(false)
+  const { data, isLoading  } = useVerifyLoginOnce();
   const router = useRouter()
+
+  useEffect(() => {
+    if (data?.authenticated) {
+      router.replace("/v1/dashboard");
+    }
+  }, [data, router]);
+
+  if (isLoading || data?.authenticated) {
+    return (
+      <main className="min-h-screen flex items-center justify-center p-4 md:p-8">
+        <div className="fixed inset-0 -z-10 overflow-hidden">
+          <div className="absolute top-0 left-0 h-full w-full bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
+          <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
+          <div className="absolute -bottom-24 -left-24 h-96 w-96 rounded-full bg-accent/10 blur-3xl" />
+        </div>
+
+        <div className="w-full max-w-md rounded-2xl border border-border/50 bg-card/90 px-8 py-10 shadow-xl backdrop-blur-xl">
+          <div className="flex flex-col items-center gap-5 text-center">
+            <div className="relative">
+              <div className="absolute inset-0 rounded-full bg-primary/20 blur-xl animate-pulse" />
+              <div className="relative flex h-16 w-16 items-center justify-center rounded-full border border-primary/20 bg-primary/10">
+                <Spinner className="h-7 w-7 text-primary" />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h2 className="text-xl font-semibold text-foreground">
+                Verificando sesión
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Estamos comprobando tu acceso, un momento...
+              </p>
+            </div>
+
+            <div className="w-full overflow-hidden rounded-full bg-muted/60">
+              <div className="h-1.5 w-1/2 animate-pulse rounded-full bg-gradient-to-r from-primary via-emerald-400 to-accent" />
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault()
@@ -37,8 +81,6 @@ export default function LoginPage() {
     try {
       // Simulate API call
       await authService.login(email, password, rememberMe).then((response) => {
-        authService.saveAccessToken(response.access_token)
-        setLoading(false)
         toast.success("Login successful! Redirecting...", {
           duration: 1300,
         })

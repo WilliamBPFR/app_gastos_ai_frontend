@@ -7,33 +7,13 @@ import {
   User,
 } from "@/types/general_response_types";
 
+import { MeUserResponse } from "@/types/users_types";
+
 export const userService = {
-  getUsers: async () => {
-    return apiRequest<User[]>({
+  getCurrentUserInfo: async (): Promise<MeUserResponse> => {
+    return apiRequest<MeUserResponse>({
       method: "GET",
-      url: "/users",
+      url: "/user/me",
     });
-  },
-
-  getUserById: async (userId: number) => {
-    return apiRequest<User>({
-      method: "GET",
-      url: `/users/${userId}`,
-    });
-  },
-
-  createUser: async (data: CreateUserRequest) => {
-    return apiRequest<CreateUserResponse, CreateUserRequest>({
-      method: "POST",
-      url: "/users",
-      data,
-    });
-  },
-
-  deleteUser: async (userId: number) => {
-    return apiRequest<{ message: string }>({
-      method: "DELETE",
-      url: `/users/${userId}`,
-    });
-  },
+  }
 };
