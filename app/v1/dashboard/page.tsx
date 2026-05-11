@@ -1,6 +1,10 @@
 "use client"
 
-import * as React from "react"
+import { 
+  useState,
+  useEffect
+} from "react"
+
 import {
   PieChart,
   Pie,
@@ -16,7 +20,100 @@ import {
 } from "recharts"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { DashboardData } from "@/types/dashboard_types"
+import { dashboardService } from "@/services/dashboardService"
 
+type CategoryExpense = DashboardData["gastos_por_categoria"][number]
+
+type PieLabelProps = {
+  payload?: CategoryExpense
+  percent?: number
+  cx?: number
+  cy?: number
+  midAngle?: number
+  outerRadius?: number
+}
+
+type PieTooltipProps = {
+  active?: boolean
+  payload?: Array<{ payload?: CategoryExpense }>
+}
+
+type LineTooltipProps = {
+  active?: boolean
+  payload?: Array<{ name?: string; value?: string | number; color?: string }>
+  label?: string
+}
+
+const renderExpenseLabel = ({ payload, percent = 0, cx = 0, cy = 0, midAngle = 0, outerRadius = 0 }: PieLabelProps) => {
+  if (!payload) {
+    return null
+  }
+
+  const RADIAN = Math.PI / 180
+  const radius = outerRadius + 25
+  const x = cx + radius * Math.cos(-midAngle * RADIAN)
+  const y = cy + radius * Math.sin(-midAngle * RADIAN)
+
+  return (
+    <text
+      x={x}
+      y={y}
+      fill={payload.color}
+      textAnchor={x > cx ? "start" : "end"}
+      dominantBaseline="central"
+      className="text-xs font-medium"
+    >
+      {`${payload.category_name} ${(percent * 100).toFixed(0)}%`}
+    </text>
+  )
+}
+
+const renderExpensesTooltip = ({ active, payload }: PieTooltipProps) => {
+  const category = payload?.[0]?.payload
+
+  if (!active || !category) {
+    return null
+  }
+
+  return (
+    <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg">
+      <p className="font-medium">{category.category_name}</p>
+      <p className="text-sm text-muted-foreground">
+        ${category.total_gastos.toLocaleString()}
+      </p>
+    </div>
+  )
+}
+
+const renderLegendLabel = (value: string) => (
+  <span className="text-xs text-foreground ml-1">{value}</span>
+)
+
+const renderLineTooltip = ({ active, payload, label }: LineTooltipProps) => {
+  if (!active || !payload?.length) {
+    return null
+  }
+
+  return (
+    <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg">
+      <p className="font-medium mb-1">{label}</p>
+      {payload.map((entry) => (
+        <p
+          key={entry.name}
+          className="text-sm"
+          style={{ color: entry.color }}
+        >
+          {entry.name}: {entry.value}
+        </p>
+      ))}
+    </div>
+  )
+}
+
+const renderLineLegendLabel = (value: string) => (
+  <span className="text-xs text-foreground ml-1">{value}</span>
+)
 // Icons
 const TrendingUpIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -51,29 +148,131 @@ const ArrowRightLeftIcon = ({ className }: { className?: string }) => (
 
 // Sample data for pie chart
 const expensesByCategory = [
-  { name: "Food", value: 450, color: "#10b981" },
-  { name: "Transport", value: 280, color: "#3b82f6" },
-  { name: "Shopping", value: 520, color: "#f59e0b" },
-  { name: "Bills", value: 380, color: "#ef4444" },
-  { name: "Entertainment", value: 190, color: "#8b5cf6" },
-  { name: "Health", value: 150, color: "#ec4899" },
+  {
+  category_name: "Food",
+  category_id: 1,
+  total_gastos: 800,
+  color: "#3b82f6"
+},
+{
+  category_name: "Transport",
+  category_id: 2,
+  total_gastos: 450,
+  color: "#10b981"
+},
+{
+  category_name: "Entertainment",
+  category_id: 3,
+  total_gastos: 300,
+  color: "#ef4444"
+},
+{
+  category_name: "Utilities",
+  category_id: 4,
+  total_gastos: 200,
+  color: "#f59e0b"
+},
+{
+  category_name: "Health",
+  category_id: 5,
+  total_gastos: 150,
+  color: "#8b5cf6"
+}
 ]
 
+  // analisis_por_dia: {
+  //     date: string;
+  //     ingresos: number;
+  //     egresos: number;
+  // }[];
 // Sample data for line chart
 const emailAnalysisData = [
-  { date: "Apr 1", analyzed: 12, converted: 8 },
-  { date: "Apr 5", analyzed: 18, converted: 14 },
-  { date: "Apr 10", analyzed: 15, converted: 11 },
-  { date: "Apr 15", analyzed: 22, converted: 18 },
-  { date: "Apr 20", analyzed: 28, converted: 22 },
-  { date: "Apr 24", analyzed: 20, converted: 16 },
+  {
+  date: "2024-06-01",
+  correos_analizados: 20,
+  correos_transaccion: 15
+},
+{
+  date: "2024-06-02",
+  correos_analizados: 25,
+  correos_transaccion: 18
+},
+{
+  date: "2024-06-03",
+  correos_analizados: 30,
+  correos_transaccion: 22
+},
+{
+  date: "2024-06-04",
+  correos_analizados: 28,
+  correos_transaccion: 20
+},
+{
+  date: "2024-06-05",
+  correos_analizados: 35,
+  correos_transaccion: 30
+},
+{
+  date: "2024-06-06",
+  correos_analizados: 40,
+  correos_transaccion: 32
+},
+{
+  date: "2024-06-07",
+  correos_analizados: 45,
+  correos_transaccion: 38
+},
+{
+  date: "2024-06-08",
+  correos_analizados: 50,
+  correos_transaccion: 42
+}
 ]
 
 export default function DashboardPage() {
-  const totalIncome = 4850.0
-  const totalExpenses = 1970.0
+  const totalIncome = 4850
+  const totalExpenses = 1970
   const analyzedEmails = 115
   const registeredTransactions = 89
+  const [dashboardData, setDashboardData] = useState(null as DashboardData | null)
+
+  useEffect(() => {
+    // Simulate fetching data from an API
+  //     message: number;
+  // total_ingresos: number;
+  // total_ingresos_count: number;
+  // total_egresos: number;
+  // total_egresos_count: number;
+  // total_transacciones_registradas: number;
+  // total_correos_analizados: number;
+    // setTimeout(() => {
+    //   setDashboardData({
+    //     message: "Dashboard data loaded successfully",
+    //     total_ingresos: totalIncome,
+    //     total_ingresos_count: 10,
+    //     total_egresos: totalExpenses,
+    //     total_egresos_count: 8,
+    //     total_transacciones_registradas: registeredTransactions,
+    //     total_correos_analizados: analyzedEmails,
+    //     gastos_por_categoria: expensesByCategory,
+    //     analisis_por_dia: emailAnalysisData
+    //   })
+    // }, 1000)
+    
+    dashboardService.getDashboardData().then((response) => {
+      setDashboardData(response)
+    }).catch((error) => {
+      console.error("Error fetching dashboard data:", error)
+    })
+  }, [])
+
+  if (!dashboardData) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">Loading dashboard data...</p>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -86,9 +285,9 @@ export default function DashboardPage() {
               <div className="space-y-1">
                 <p className="text-sm font-medium text-muted-foreground">Income</p>
                 <p className="text-2xl font-bold text-emerald-600">
-                  ${totalIncome.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                  ${dashboardData.total_ingresos.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                 </p>
-                <p className="text-xs text-muted-foreground">+12.5% from last month</p>
+                <p className="text-xs text-muted-foreground">{dashboardData.porcentaje_cambio_ingresos !== null ? `${dashboardData.porcentaje_cambio_ingresos.toFixed(1)}% from last period` : 'No data for last period'} </p>
               </div>
               <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
                 <TrendingUpIcon className="w-6 h-6 text-emerald-600" />
@@ -104,9 +303,9 @@ export default function DashboardPage() {
               <div className="space-y-1">
                 <p className="text-sm font-medium text-muted-foreground">Expenses</p>
                 <p className="text-2xl font-bold text-red-600">
-                  ${totalExpenses.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                  ${dashboardData.total_egresos.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                 </p>
-                <p className="text-xs text-muted-foreground">-8.3% from last month</p>
+                <p className="text-xs text-muted-foreground">{dashboardData.porcentaje_cambio_egresos !== null ? `${dashboardData.porcentaje_cambio_egresos.toFixed(1)}% from last period` : 'No data for last period'}</p>
               </div>
               <div className="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center">
                 <TrendingDownIcon className="w-6 h-6 text-red-600" />
@@ -121,8 +320,8 @@ export default function DashboardPage() {
             <div className="flex items-start justify-between">
               <div className="space-y-1">
                 <p className="text-sm font-medium text-muted-foreground">Analyzed Emails</p>
-                <p className="text-2xl font-bold text-foreground">{analyzedEmails}</p>
-                <p className="text-xs text-muted-foreground">This month</p>
+                <p className="text-2xl font-bold text-foreground">{dashboardData.total_correos_analizados}</p>
+                <p className="text-xs text-muted-foreground">This period</p>
               </div>
               <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
                 <MailCheckIcon className="w-6 h-6 text-blue-600" />
@@ -137,8 +336,8 @@ export default function DashboardPage() {
             <div className="flex items-start justify-between">
               <div className="space-y-1">
                 <p className="text-sm font-medium text-muted-foreground">Registered Transactions</p>
-                <p className="text-2xl font-bold text-foreground">{registeredTransactions}</p>
-                <p className="text-xs text-muted-foreground">77% conversion rate</p>
+                <p className="text-2xl font-bold text-foreground">{dashboardData.total_transacciones_registradas}</p>
+                <p className="text-xs text-muted-foreground">{((dashboardData.total_correos_analizados / dashboardData.total_transacciones_registradas) * 100).toFixed(1) || 0}% conversion rate</p>
               </div>
               <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center">
                 <ArrowRightLeftIcon className="w-6 h-6 text-amber-600" />
@@ -156,64 +355,32 @@ export default function DashboardPage() {
             <CardTitle className="text-lg font-semibold">Expenses by Category</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[320px]">
+            <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={expensesByCategory}
+                    data={dashboardData.gastos_por_categoria}
+                    nameKey="category_name"
                     cx="50%"
                     cy="45%"
                     innerRadius={70}
                     outerRadius={100}
                     paddingAngle={3}
-                    dataKey="value"
-                    label={({ name, percent, cx, cy, midAngle, innerRadius, outerRadius }) => {
-                      const RADIAN = Math.PI / 180
-                      const radius = outerRadius + 25
-                      const x = cx + radius * Math.cos(-midAngle * RADIAN)
-                      const y = cy + radius * Math.sin(-midAngle * RADIAN)
-                      return (
-                        <text
-                          x={x}
-                          y={y}
-                          fill={expensesByCategory.find((e) => e.name === name)?.color}
-                          textAnchor={x > cx ? "start" : "end"}
-                          dominantBaseline="central"
-                          className="text-xs font-medium"
-                        >
-                          {`${name} ${(percent * 100).toFixed(0)}%`}
-                        </text>
-                      )
-                    }}
+                    dataKey="total_gastos"
+                    label={renderExpenseLabel}
                     labelLine={false}
                   >
-                    {expensesByCategory.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    {dashboardData.gastos_por_categoria.map((entry, index) => (
+                      <Cell key={entry.category_id} fill={entry.color} />
                     ))}
                   </Pie>
-                  <RechartsTooltip
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg">
-                            <p className="font-medium">{payload[0].name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              ${payload[0].value?.toLocaleString()}
-                            </p>
-                          </div>
-                        )
-                      }
-                      return null
-                    }}
-                  />
+                  <RechartsTooltip content={renderExpensesTooltip} />
                   <Legend
                     verticalAlign="bottom"
                     height={36}
                     iconType="circle"
                     iconSize={8}
-                    formatter={(value) => (
-                      <span className="text-xs text-foreground ml-1">{value}</span>
-                    )}
+                    formatter={renderLegendLabel}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -227,10 +394,10 @@ export default function DashboardPage() {
             <CardTitle className="text-lg font-semibold">Email Analysis by Day</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[320px]">
+            <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
-                  data={emailAnalysisData}
+                  data={dashboardData.analisis_por_dia}
                   margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
                 >
                   <CartesianGrid
@@ -251,30 +418,10 @@ export default function DashboardPage() {
                     tickLine={false}
                     axisLine={false}
                   />
-                  <RechartsTooltip
-                    content={({ active, payload, label }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg">
-                            <p className="font-medium mb-1">{label}</p>
-                            {payload.map((entry, index) => (
-                              <p
-                                key={index}
-                                className="text-sm"
-                                style={{ color: entry.color }}
-                              >
-                                {entry.name}: {entry.value}
-                              </p>
-                            ))}
-                          </div>
-                        )
-                      }
-                      return null
-                    }}
-                  />
+                  <RechartsTooltip content={renderLineTooltip} />
                   <Line
                     type="monotone"
-                    dataKey="analyzed"
+                    dataKey="correos_analizados"
                     name="Analyzed Emails"
                     stroke="#3b82f6"
                     strokeWidth={2}
@@ -283,7 +430,7 @@ export default function DashboardPage() {
                   />
                   <Line
                     type="monotone"
-                    dataKey="converted"
+                    dataKey="correos_transaccion"
                     name="Converted to Transactions"
                     stroke="#10b981"
                     strokeWidth={2}
@@ -295,9 +442,7 @@ export default function DashboardPage() {
                     height={36}
                     iconType="circle"
                     iconSize={8}
-                    formatter={(value) => (
-                      <span className="text-xs text-foreground ml-1">{value}</span>
-                    )}
+                    formatter={renderLineLegendLabel}
                   />
                 </LineChart>
               </ResponsiveContainer>
