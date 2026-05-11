@@ -5,7 +5,6 @@ import { useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { format } from "date-fns"
-import { DateRange } from "react-day-picker"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -25,6 +24,7 @@ import {
 } from "@/components/ui/tooltip"
 
 import { useCurrentUser } from "@/hooks/use-current-user"
+import { useDateRange } from "@/hooks/use-hour-filter"
 import { ContinualVerifyLoginWatcher } from "@/components/continualVerifyLoginWatcher";
 import { authService } from "@/services/authService"
 
@@ -150,12 +150,22 @@ export default function DashboardLayout({
   const pathname = usePathname()
   const router = useRouter()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [dateRange, setDateRange] = useState<DateRange | undefined>({
-    from: new Date(2026, 3, 1),
-    to: new Date(2026, 3, 30),
-  })
   const { data: currentUser } = useCurrentUser()
+  const { dateRange, setDateRange } = useDateRange()
   const currentPageTitle = `${navItems.find((item) => item.href === pathname)?.title || "Dashboard"} - ${currentUser?.username || "User"}`
+  const getDateRangeLabel = () => {
+    if (!dateRange?.from) {
+      return "Pick a date range"
+    }
+
+    if (!dateRange.to) {
+      return format(dateRange.from, "MMM d, yyyy")
+    }
+
+    return `${format(dateRange.from, "MMM d, yyyy")} - ${format(dateRange.to, "MMM d, yyyy")}`
+  }
+
+  const dateRangeLabel = getDateRangeLabel()
 
   const handleLogout = async (redirectTo = "/") => {
     try {
@@ -178,7 +188,7 @@ export default function DashboardLayout({
           {/* Logo/Brand Header */}
           <div className="h-16 flex items-center px-4 border-b border-border">
             <Link href="/dashboard" className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-linear-to-br from-primary to-accent flex items-center justify-center shrink-0">
                 <WalletIcon className="w-4 h-4 text-primary-foreground" />
               </div>
               {!sidebarCollapsed && (
@@ -263,17 +273,7 @@ export default function DashboardLayout({
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateRange?.from ? (
-                      dateRange.to ? (
-                        <>
-                          {format(dateRange.from, "MMM d, yyyy")} - {format(dateRange.to, "MMM d, yyyy")}
-                        </>
-                      ) : (
-                        format(dateRange.from, "MMM d, yyyy")
-                      )
-                    ) : (
-                      <span>Pick a date range</span>
-                    )}
+                    <span>{dateRangeLabel}</span>
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="end">

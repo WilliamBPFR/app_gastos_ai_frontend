@@ -3,14 +3,11 @@
 import * as React from "react"
 import { useState } from "react"
 import { format } from "date-fns"
-import { DateRange } from "react-day-picker"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import {
@@ -43,21 +40,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useDateRange } from "@/hooks/use-hour-filter"
 
 // Icons
 const SearchIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="11" cy="11" r="8" />
     <path d="m21 21-4.3-4.3" />
-  </svg>
-)
-
-const CalendarIcon = ({ className }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M8 2v4" />
-    <path d="M16 2v4" />
-    <rect width="18" height="18" x="3" y="4" rx="2" />
-    <path d="M3 10h18" />
   </svg>
 )
 
@@ -248,7 +237,7 @@ const categoryColors: Record<string, string> = {
 
 export default function TransactionsPage() {
   const [searchQuery, setSearchQuery] = useState("")
-  const [dateRange, setDateRange] = useState<DateRange | undefined>()
+  const { dateRange } = useDateRange()
   const [transactionType, setTransactionType] = useState<string>("all")
   const [account, setAccount] = useState<string>("all")
   const [category, setCategory] = useState<string>("all")
@@ -340,7 +329,6 @@ export default function TransactionsPage() {
 
   const hasActiveFilters =
     searchQuery ||
-    dateRange ||
     transactionType !== "all" ||
     account !== "all" ||
     category !== "all" ||
@@ -348,7 +336,6 @@ export default function TransactionsPage() {
 
   const clearFilters = () => {
     setSearchQuery("")
-    setDateRange(undefined)
     setTransactionType("all")
     setAccount("all")
     setCategory("all")
@@ -378,7 +365,7 @@ export default function TransactionsPage() {
       {/* Filters Card */}
       <Card>
         <CardContent className="p-4 space-y-3">
-          {/* First Row: Search and Date */}
+          {/* First Row: Search */}
           <div className="flex flex-wrap items-center gap-3">
             {/* Search */}
             <div className="relative w-full sm:w-64">
@@ -390,41 +377,6 @@ export default function TransactionsPage() {
                 className="pl-9 h-9"
               />
             </div>
-
-            {/* Date Range */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className={cn(
-                    "justify-start text-left font-normal w-full sm:w-auto h-9",
-                    !dateRange && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {dateRange?.from ? (
-                    dateRange.to ? (
-                      <>
-                        {format(dateRange.from, "MMM d, yyyy")} - {format(dateRange.to, "MMM d, yyyy")}
-                      </>
-                    ) : (
-                      format(dateRange.from, "MMM d, yyyy")
-                    )
-                  ) : (
-                    <span>Select date range</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="range"
-                  selected={dateRange}
-                  onSelect={setDateRange}
-                  numberOfMonths={2}
-                />
-              </PopoverContent>
-            </Popover>
           </div>
 
           {/* Second Row: Filter Selects and Export */}

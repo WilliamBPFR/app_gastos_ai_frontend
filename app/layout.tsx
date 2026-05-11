@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Toaster } from '@/components/ui/sonner'
 import { QueryProvider } from '@/providers/query-providers'
+import { DateRangeProvider } from '@/providers/date-range-provider'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -35,12 +36,22 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const today = new Date()
+  const startOfCurrentMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+
   return (
     <html lang="en" className="bg-background">
       <body className="font-sans antialiased">
         <QueryProvider>
-          {children}
-          <Toaster richColors position="top-right" />
+          <DateRangeProvider
+            initialDateRange={{
+              from: startOfCurrentMonth,
+              to: today,
+            }}
+          >
+            {children}
+            <Toaster richColors position="top-right" />
+          </DateRangeProvider>
         </QueryProvider>
       </body>
     </html>
