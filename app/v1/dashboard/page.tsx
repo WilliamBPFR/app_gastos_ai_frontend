@@ -4,6 +4,7 @@ import {
   useState,
   useEffect
 } from "react"
+import { format } from "date-fns"
 
 import {
   PieChart,
@@ -22,6 +23,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { DashboardData } from "@/types/dashboard_types"
 import { dashboardService } from "@/services/dashboardService"
+import { useDateRange } from "@/hooks/use-date-range"
 
 type CategoryExpense = DashboardData["gastos_por_categoria"][number]
 
@@ -230,41 +232,27 @@ const emailAnalysisData = [
 ]
 
 export default function DashboardPage() {
-  const totalIncome = 4850
-  const totalExpenses = 1970
-  const analyzedEmails = 115
-  const registeredTransactions = 89
   const [dashboardData, setDashboardData] = useState(null as DashboardData | null)
+  const { dateRange } = useDateRange()
+
+  const formatDateForApi = (date: Date | undefined) => {
+    if (!date) {
+      return undefined
+    }
+
+    return format(date, "yyyy-MM-dd")
+  }
 
   useEffect(() => {
-    // Simulate fetching data from an API
-  //     message: number;
-  // total_ingresos: number;
-  // total_ingresos_count: number;
-  // total_egresos: number;
-  // total_egresos_count: number;
-  // total_transacciones_registradas: number;
-  // total_correos_analizados: number;
-    // setTimeout(() => {
-    //   setDashboardData({
-    //     message: "Dashboard data loaded successfully",
-    //     total_ingresos: totalIncome,
-    //     total_ingresos_count: 10,
-    //     total_egresos: totalExpenses,
-    //     total_egresos_count: 8,
-    //     total_transacciones_registradas: registeredTransactions,
-    //     total_correos_analizados: analyzedEmails,
-    //     gastos_por_categoria: expensesByCategory,
-    //     analisis_por_dia: emailAnalysisData
-    //   })
-    // }, 1000)
-    
-    dashboardService.getDashboardData().then((response) => {
+    dashboardService.getDashboardData({
+      fechadesde: formatDateForApi(dateRange?.from),
+      fechahasta: formatDateForApi(dateRange?.to),
+    }).then((response) => {
       setDashboardData(response)
     }).catch((error) => {
       console.error("Error fetching dashboard data:", error)
     })
-  }, [])
+  }, [dateRange?.from, dateRange?.to])
 
   if (!dashboardData) {
     return (

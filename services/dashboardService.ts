@@ -1,12 +1,12 @@
 import { apiRequest } from "@/axiosConfig/apiRequest";
-import { DashboardData } from "@/types/dashboard_types";
+import { DashboardData, DashboardDataRequest } from "@/types/dashboard_types";
 
 export const dashboardService = {
-    getDashboardData: async () => {
-        return apiRequest<DashboardData, void>({
+    getDashboardData: async (params: DashboardDataRequest) => {
+        return apiRequest<DashboardData, DashboardDataRequest>({
             method: "GET",
             url: "/dashboard/data",
-            
+            params
         });
     }
 }

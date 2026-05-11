@@ -22,3 +22,8 @@ export interface DashboardData {
       correos_transaccion: number;
   }[];
 }
+
+export interface DashboardDataRequest {
+    fechadesde: string | undefined;
+    fechahasta: string | undefined;
+}
