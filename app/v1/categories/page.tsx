@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useRef, useState } from "react"
 import { format } from "date-fns"
 import {
   PlusIcon,
@@ -55,93 +55,17 @@ import { categoryService } from "@/services/categoryService"
 import { Category } from "@/types/category_types"
 import { toast } from "sonner"
 
-// Sample categories data
-const categoriesData = [
-  {
-    id: "CAT-001",
-    name: "Food",
-    description: "Restaurants, groceries, and dining expenses",
-    createdAt: new Date(2025, 0, 15),
-    color: "bg-emerald-100 text-emerald-700",
-  },
-  {
-    id: "CAT-002",
-    name: "Transport",
-    description: "Gas, public transit, rideshare, and vehicle maintenance",
-    createdAt: new Date(2025, 0, 15),
-    color: "bg-blue-100 text-blue-700",
-  },
-  {
-    id: "CAT-003",
-    name: "Bills",
-    description: "Utilities, subscriptions, and recurring payments",
-    createdAt: new Date(2025, 0, 16),
-    color: "bg-red-100 text-red-700",
-  },
-  {
-    id: "CAT-004",
-    name: "Entertainment",
-    description: "Movies, games, streaming services, and leisure activities",
-    createdAt: new Date(2025, 0, 18),
-    color: "bg-purple-100 text-purple-700",
-  },
-  {
-    id: "CAT-005",
-    name: "Health",
-    description: "Medical expenses, pharmacy, gym, and wellness",
-    createdAt: new Date(2025, 0, 20),
-    color: "bg-pink-100 text-pink-700",
-  },
-  {
-    id: "CAT-006",
-    name: "Shopping",
-    description: "Clothing, electronics, and general retail purchases",
-    createdAt: new Date(2025, 1, 5),
-    color: "bg-amber-100 text-amber-700",
-  },
-  {
-    id: "CAT-007",
-    name: "Education",
-    description: "Courses, books, certifications, and learning materials",
-    createdAt: new Date(2025, 1, 10),
-    color: "bg-indigo-100 text-indigo-700",
-  },
-  {
-    id: "CAT-008",
-    name: "Salary",
-    description: "Monthly salary and regular employment income",
-    createdAt: new Date(2025, 1, 12),
-    color: "bg-teal-100 text-teal-700",
-  },
-  {
-    id: "CAT-009",
-    name: "Freelance",
-    description: "Income from freelance work and side projects",
-    createdAt: new Date(2025, 2, 1),
-    color: "bg-cyan-100 text-cyan-700",
-  },
-  {
-    id: "CAT-010",
-    name: "Investments",
-    description: "Dividends, capital gains, and investment returns",
-    createdAt: new Date(2025, 2, 15),
-    color: "bg-lime-100 text-lime-700",
-  },
-  {
-    id: "CAT-011",
-    name: "Housing",
-    description: "Rent, mortgage, repairs, and home maintenance",
-    createdAt: new Date(2025, 3, 1),
-    color: "bg-orange-100 text-orange-700",
-  },
-  {
-    id: "CAT-012",
-    name: "Travel",
-    description: "Flights, hotels, and vacation expenses",
-    createdAt: new Date(2025, 3, 10),
-    color: "bg-sky-100 text-sky-700",
-  },
-]
+const tableColumnOrder = ["id", "name", "description", "createdAt", "status", "actions"] as const
+type TableColumnKey = (typeof tableColumnOrder)[number]
+
+const minimumColumnWidths: Record<TableColumnKey, number> = {
+  id: 8,
+  name: 18,
+  description: 30,
+  createdAt: 14,
+  status: 10,
+  actions: 6,
+}
 
 export default function CategoriesPage() {
   // Filter states
@@ -149,6 +73,8 @@ export default function CategoriesPage() {
   const [sortOrder, setSortOrder] = useState("all")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [isToggleDialogOpen, setIsToggleDialogOpen] = useState(false)
   const [categoryToToggle, setCategoryToToggle] = useState<Category | null>(null)
   const [isToggling, setIsToggling] = useState(false)
@@ -160,11 +86,26 @@ export default function CategoriesPage() {
   const [totalCategories, setTotalCategories] = useState(0)
   //All categories state
   const [allCategories, setAllCategories] = useState<Category[]>([])
+  const [columnWidths, setColumnWidths] = useState<Record<TableColumnKey, number>>({
+    id: 8,
+    name: 24,
+    description: 28,
+    createdAt: 16,
+    status: 12,
+    actions: 12,
+  })
   const [categoryErrors, setCategoryErrors] = useState({
     name: "",
     description: "",
     color: "",
   })
+  const tableContainerRef = useRef<HTMLDivElement | null>(null)
+  const resizeStateRef = useRef<{
+    column: TableColumnKey
+    nextColumn: TableColumnKey
+    startX: number
+    startWidths: Record<TableColumnKey, number>
+  } | null>(null)
   
   const fetchCategories = async () => {
       try {
@@ -230,6 +171,8 @@ export default function CategoriesPage() {
       description: "",
       color: "",
     })
+    setIsEditMode(false)
+    setEditingCategory(null)
   }
 
   const handleDialogOpenChange = (open: boolean) => {
@@ -241,6 +184,19 @@ export default function CategoriesPage() {
     if (!open) {
       resetNewCategory()
     }
+  }
+
+  const handleOpenEditDialog = (category: Category) => {
+    // Populate the modal with the category data and switch to edit mode
+    setEditingCategory(category)
+    setIsEditMode(true)
+    setIsCreateDialogOpen(true)
+    setNewCategory({
+      name: category.category_name || "",
+      description: category.category_description || "",
+      color: /^#[0-9A-Fa-f]{6}$/.test(String(category.color)) ? String(category.color) : "#10b981",
+      active: !!category.active,
+    })
   }
 
   const handleCreateCategory = async (event: { preventDefault: () => void }) => {
@@ -266,6 +222,46 @@ export default function CategoriesPage() {
     } catch (error) {
       console.error("Error creating category:", error)
       toast.error("An error occurred while creating the category. Please try again.", {
+        duration: 2500,
+      })
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
+  // Skeleton for edit submit handler
+  const handleEditCategory = async (event: { preventDefault: () => void }) => {
+    event.preventDefault()
+    if (!editingCategory) return
+    if (!validateCategoryForm(newCategory)) {
+      return
+    }
+
+    try {
+      setIsCreating(true)
+      // TODO: implement actual update call in categoryService
+      // Example (uncomment once implemented):
+      console.log("Updating category with ID:", editingCategory.category_id)
+      console.log("New category data:", newCategory)
+      await categoryService.updateCategory(
+        editingCategory.category_id,
+        newCategory.name.trim(),
+        newCategory.description.trim(),
+        newCategory.color.trim(),
+        newCategory.active
+      )
+
+      await fetchCategories()
+      toast.success(`Categoría "${newCategory.name.trim() || "Categoria"}" modificada correctamente.`, {
+        duration: 2500,
+      })
+      setIsCreateDialogOpen(false)
+      resetNewCategory()
+      setIsEditMode(false)
+      setEditingCategory(null)
+    } catch (error) {
+      console.error("Error editing category:", error)
+      toast.error("An error occurred while updating the category. Please try again.", {
         duration: 2500,
       })
     } finally {
@@ -328,6 +324,59 @@ export default function CategoriesPage() {
     setSearchQuery("")
     setSortOrder("all")
     setCurrentPage(1)
+  }
+
+  const startColumnResize = (column: TableColumnKey) => (event: React.PointerEvent<HTMLDivElement>) => {
+    const columnIndex = tableColumnOrder.indexOf(column)
+    const nextColumn = tableColumnOrder[columnIndex + 1]
+
+    if (!nextColumn) {
+      return
+    }
+
+    event.preventDefault()
+    event.stopPropagation()
+
+    resizeStateRef.current = {
+      column,
+      nextColumn,
+      startX: event.clientX,
+      startWidths: columnWidths,
+    }
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      const resizeState = resizeStateRef.current
+      const containerWidth = tableContainerRef.current?.clientWidth ?? 0
+
+      if (!resizeState || containerWidth === 0) {
+        return
+      }
+
+      const deltaPercent = ((moveEvent.clientX - resizeState.startX) / containerWidth) * 100
+      const currentStartWidth = resizeState.startWidths[resizeState.column]
+      const nextStartWidth = resizeState.startWidths[resizeState.nextColumn]
+      const pairTotalWidth = currentStartWidth + nextStartWidth
+      const minCurrentWidth = minimumColumnWidths[resizeState.column]
+      const minNextWidth = minimumColumnWidths[resizeState.nextColumn]
+      const proposedCurrentWidth = currentStartWidth + deltaPercent
+      const nextColumnWidth = Math.max(minNextWidth, pairTotalWidth - proposedCurrentWidth)
+      const currentColumnWidth = Math.max(minCurrentWidth, pairTotalWidth - nextColumnWidth)
+
+      setColumnWidths((prevWidths) => ({
+        ...prevWidths,
+        [resizeState.column]: currentColumnWidth,
+        [resizeState.nextColumn]: pairTotalWidth - currentColumnWidth,
+      }))
+    }
+
+    const handlePointerUp = () => {
+      resizeStateRef.current = null
+      window.removeEventListener("pointermove", handlePointerMove)
+      window.removeEventListener("pointerup", handlePointerUp)
+    }
+
+    window.addEventListener("pointermove", handlePointerMove)
+    window.addEventListener("pointerup", handlePointerUp)
   }
 
   return (
@@ -409,103 +458,122 @@ export default function CategoriesPage() {
 
       {/* Categories Table */}
       <Card className="overflow-hidden">
-        <Table className="table-fixed w-full">
-          <TableHeader>
-            <TableRow className="bg-muted/50 hover:bg-muted/50 border-b border-border">
-              <TableHead className="w-[12%] px-4 py-3 font-semibold text-foreground">
-                <button className="flex items-center gap-1 hover:text-primary transition-colors">
-                  ID
-                  <ArrowUpDownIcon className="w-3 h-3" />
-                </button>
-              </TableHead>
-              <TableHead className="w-[20%] px-4 py-3 font-semibold text-foreground">
-                <button className="flex items-center gap-1 hover:text-primary transition-colors">
-                  Category Name
-                  <ArrowUpDownIcon className="w-3 h-3" />
-                </button>
-              </TableHead>
-              <TableHead className="w-[40%] px-4 py-3 font-semibold text-foreground">
-                Description
-              </TableHead>
-              <TableHead className="w-[18%] px-4 py-3 font-semibold text-foreground">
-                <button className="flex items-center gap-1 hover:text-primary transition-colors">
-                  Created At
-                  <ArrowUpDownIcon className="w-3 h-3" />
-                </button>
-              </TableHead>
-              <TableHead className="w-[12%] px-4 py-3 font-semibold text-foreground">
-                Status
-              </TableHead>
-              <TableHead className="w-[10%] px-4 py-3">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {allCategories.map((category) => (
-              <TableRow
-                key={category.category_id}
-                className="group border-b border-border last:border-b-0 hover:bg-muted/30"
-              >
-                <TableCell className="w-[12%] px-4 py-3 text-sm text-muted-foreground font-mono">
-                  {category.category_id}
-                </TableCell>
-                <TableCell className="w-[20%] px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <div className={cn(`w-2 h-2 rounded-full`)} style={{backgroundColor: category.color}} />
-                    <span className="font-medium text-sm">{category.category_name}</span>
+        <div ref={tableContainerRef} className="w-full overflow-hidden">
+          <Table className="mx-auto w-full table-fixed">
+            <TableHeader>
+              <TableRow className="bg-muted/50 hover:bg-muted/50 border-b border-border">
+                <TableHead className="relative px-3 py-3 font-semibold text-foreground overflow-hidden" style={{ width: `${columnWidths.id}%` }}>
+                  <button className="flex max-w-full items-center gap-1 overflow-hidden whitespace-nowrap text-left hover:text-primary transition-colors">
+                    ID
+                    <ArrowUpDownIcon className="w-3 h-3" />
+                  </button>
+                  <div onPointerDown={startColumnResize("id")} className="absolute right-0 top-0 h-full w-4 cursor-col-resize touch-none" aria-hidden="true">
+                    <span className="absolute left-1/2 top-2 bottom-2 w-px -translate-x-1/2 bg-border/60 transition-colors hover:bg-primary/50" />
                   </div>
-                </TableCell>
-                <TableCell className="w-[40%] px-4 py-3 text-sm text-muted-foreground truncate">
-                  {category.category_description}
-                </TableCell>
-                <TableCell className="w-[18%] px-4 py-3 text-sm text-muted-foreground">
-                  {format(category.creation_date, "MMM d, yyyy")}
-                </TableCell>
-                <TableCell className="w-[12%] px-4 py-3">
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      "font-medium text-xs",
-                      category.active
-                        ? "bg-green-50 text-green-700 border-green-200"
-                        : "bg-red-50 text-red-700 border-red-200"
-                    )}
-                  >
-                    {category.active ? "Activated" : "Deactivated"}
-                  </Badge>
-                </TableCell>
-                <TableCell className="w-[10%] px-4 py-3">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                      >
-                        <MoreHorizontalIcon className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem>Edit</DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => handleOpenToggleDialog(category)}
-                        style={{color: category.active ? "red" : "green"}}
-                      >
-                        {category.active ? "Deactivate" : "Activate"}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
+                </TableHead>
+                <TableHead className="relative px-3 py-3 font-semibold text-foreground overflow-hidden" style={{ width: `${columnWidths.name}%` }}>
+                  <button className="flex max-w-full items-center gap-1 overflow-hidden whitespace-nowrap text-left hover:text-primary transition-colors">
+                    Category Name
+                    <ArrowUpDownIcon className="w-3 h-3" />
+                  </button>
+                  <div onPointerDown={startColumnResize("name")} className="absolute right-0 top-0 h-full w-4 cursor-col-resize touch-none" aria-hidden="true">
+                    <span className="absolute left-1/2 top-2 bottom-2 w-px -translate-x-1/2 bg-border/60 transition-colors hover:bg-primary/50" />
+                  </div>
+                </TableHead>
+                <TableHead className="relative px-3 py-3 font-semibold text-foreground overflow-hidden" style={{ width: `${columnWidths.description}%` }}>
+                  Description
+                  <div onPointerDown={startColumnResize("description")} className="absolute right-0 top-0 h-full w-4 cursor-col-resize touch-none" aria-hidden="true">
+                    <span className="absolute left-1/2 top-2 bottom-2 w-px -translate-x-1/2 bg-border/60 transition-colors hover:bg-primary/50" />
+                  </div>
+                </TableHead>
+                <TableHead className="relative px-3 py-3 font-semibold text-foreground overflow-hidden" style={{ width: `${columnWidths.createdAt}%` }}>
+                  <button className="flex max-w-full items-center gap-1 overflow-hidden whitespace-nowrap text-left hover:text-primary transition-colors">
+                    Created At
+                    <ArrowUpDownIcon className="w-3 h-3" />
+                  </button>
+                  <div onPointerDown={startColumnResize("createdAt")} className="absolute right-0 top-0 h-full w-4 cursor-col-resize touch-none" aria-hidden="true">
+                    <span className="absolute left-1/2 top-2 bottom-2 w-px -translate-x-1/2 bg-border/60 transition-colors hover:bg-primary/50" />
+                  </div>
+                </TableHead>
+                <TableHead className="relative px-3 py-3 font-semibold text-foreground overflow-hidden" style={{ width: `${columnWidths.status}%` }}>
+                  Status
+                  <div onPointerDown={startColumnResize("status")} className="absolute right-0 top-0 h-full w-4 cursor-col-resize touch-none" aria-hidden="true">
+                    <span className="absolute left-1/2 top-2 bottom-2 w-px -translate-x-1/2 bg-border/60 transition-colors hover:bg-primary/50" />
+                  </div>
+                </TableHead>
+                <TableHead className="px-3 py-3 overflow-hidden" style={{ width: `${columnWidths.actions}%` }}>
+                  Actions
+                </TableHead>
               </TableRow>
-            ))}
-            {allCategories.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
-                  No categories found matching your search.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {allCategories.map((category) => (
+                <TableRow
+                  key={category.category_id}
+                  className="group border-b border-border last:border-b-0 hover:bg-muted/30"
+                >
+                  <TableCell className="px-3 py-3 text-sm text-muted-foreground font-mono overflow-hidden whitespace-nowrap" style={{ width: `${columnWidths.id}%` }}>
+                    {category.category_id}
+                  </TableCell>
+                  <TableCell className="px-3 py-3 overflow-hidden" style={{ width: `${columnWidths.name}%` }}>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <div className={cn("w-2 h-2 rounded-full")} style={{ backgroundColor: category.color }} />
+                      <span className="min-w-0 truncate font-medium text-sm">{category.category_name}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="px-3 py-3 text-sm text-muted-foreground truncate overflow-hidden" style={{ width: `${columnWidths.description}%` }}>
+                    {category.category_description}
+                  </TableCell>
+                  <TableCell className="px-3 py-3 text-sm text-muted-foreground whitespace-nowrap overflow-hidden" style={{ width: `${columnWidths.createdAt}%` }}>
+                    {format(category.creation_date, "MMM d, yyyy")}
+                  </TableCell>
+                  <TableCell className="px-3 py-3 overflow-hidden" style={{ width: `${columnWidths.status}%` }}>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "font-medium text-xs",
+                        category.active
+                          ? "bg-green-50 text-green-700 border-green-200"
+                          : "bg-red-50 text-red-700 border-red-200"
+                      )}
+                    >
+                      {category.active ? "Activated" : "Deactivated"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="px-3 py-3 overflow-hidden" style={{ width: `${columnWidths.actions}%` }}>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                        >
+                          <MoreHorizontalIcon className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleOpenEditDialog(category)}>Edit</DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleOpenToggleDialog(category)}
+                          style={{color: category.active ? "red" : "green"}}
+                        >
+                          {category.active ? "Deactivate" : "Activate"}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {allCategories.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
+                    No categories found matching your search.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </Card>
 
       {/* Pagination */}
@@ -598,11 +666,22 @@ export default function CategoriesPage() {
           }
         }}
       >
-        <form onSubmit={handleCreateCategory} className="space-y-0">
+        <form
+          onSubmit={(e) => {
+            if (isEditMode) {
+              handleEditCategory(e)
+            } else {
+              handleCreateCategory(e)
+            }
+          }}
+          className="space-y-0"
+        >
           <DialogHeader className="border-b px-6 pt-6 pb-4">
-            <DialogTitle>Create Category</DialogTitle>
+            <DialogTitle>
+              {isEditMode ? `Modificando categoría ${editingCategory?.category_name ?? ""}` : "Create Category"}
+            </DialogTitle>
             <DialogDescription>
-              Add a new category to organize your transactions.
+              {isEditMode ? `Editar la categoría seleccionada.` : "Add a new category to organize your transactions."}
             </DialogDescription>
           </DialogHeader>
 
@@ -719,7 +798,7 @@ export default function CategoriesPage() {
               Cancel
             </Button>
             <Button type="submit" disabled={isCreating}>
-              {isCreating ? "Enviando..." : "Create"}
+              {isCreating ? (isEditMode ? "Modificando..." : "Enviando...") : (isEditMode ? "Guardar cambios" : "Create")}
             </Button>
           </DialogFooter>
         </form>

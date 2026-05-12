@@ -39,5 +39,12 @@ export const categoryService = {
             method: "PUT",
             url: "/categories/activate/" + category_id
         });
+    },
+    updateCategory: async (category_id: number, category_name: string, category_description: string, color?: string, active?: boolean) => {
+        return apiRequest<GeneralResponse, { category_name: string; category_description: string; color?: string; active?: boolean }>({
+            method: "PUT",
+            url: "/categories/update/" + category_id,
+            data: { category_name, category_description, color, active },
+        });
     }
 }
