@@ -41,6 +41,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useDateRange } from "@/hooks/use-date-range"
+import {
+  transactionsService,
+} from "@/services/transactionsService"
+import {
+  categoryService,
+} from "@/services/categoryService"
 
 // Icons
 const SearchIcon = ({ className }: { className?: string }) => (

@@ -75,6 +75,8 @@ export default function CategoriesPage() {
   const [isCreating, setIsCreating] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
+  const [categoryToView, setCategoryToView] = useState<Category | null>(null)
   const [isToggleDialogOpen, setIsToggleDialogOpen] = useState(false)
   const [categoryToToggle, setCategoryToToggle] = useState<Category | null>(null)
   const [isToggling, setIsToggling] = useState(false)
@@ -310,6 +312,16 @@ export default function CategoriesPage() {
     setIsToggleDialogOpen(true)
   }
 
+  const handleOpenViewDialog = (category: Category) => {
+    setCategoryToView(category)
+    setIsViewDialogOpen(true)
+  }
+
+  const handleCloseViewDialog = () => {
+    setIsViewDialogOpen(false)
+    setCategoryToView(null)
+  }
+
   const handleCloseToggleDialog = () => {
     if (isToggling) {
       return
@@ -511,6 +523,7 @@ export default function CategoriesPage() {
                 <TableRow
                   key={category.category_id}
                   className="group border-b border-border last:border-b-0 hover:bg-muted/30"
+                  onDoubleClick={() => handleOpenViewDialog(category)}
                 >
                   <TableCell className="px-3 py-3 text-sm text-muted-foreground font-mono overflow-hidden whitespace-nowrap" style={{ width: `${columnWidths.id}%` }}>
                     {category.category_id}
@@ -552,6 +565,9 @@ export default function CategoriesPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleOpenViewDialog(category)}>
+                          View
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleOpenEditDialog(category)}>Edit</DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => handleOpenToggleDialog(category)}
@@ -802,6 +818,55 @@ export default function CategoriesPage() {
             </Button>
           </DialogFooter>
         </form>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog open={isViewDialogOpen} onOpenChange={handleCloseViewDialog}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Category Details</DialogTitle>
+          <DialogDescription>
+            Read-only category information.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2">
+          <div className="space-y-1">
+            <Label>Category ID</Label>
+            <p className="text-sm text-muted-foreground">{categoryToView?.category_id ?? "-"}</p>
+          </div>
+          <div className="space-y-1">
+            <Label>Status</Label>
+            <p className="text-sm text-muted-foreground">{categoryToView?.active ? "Activated" : "Deactivated"}</p>
+          </div>
+          <div className="space-y-1 sm:col-span-2">
+            <Label>Category Name</Label>
+            <p className="text-sm text-muted-foreground">{categoryToView?.category_name ?? "-"}</p>
+          </div>
+          <div className="space-y-1 sm:col-span-2">
+            <Label>Description</Label>
+            <p className="text-sm text-muted-foreground wrap-break-word">{categoryToView?.category_description ?? "-"}</p>
+          </div>
+          <div className="space-y-1">
+            <Label>Color</Label>
+            <div className="flex items-center gap-2">
+              <span className="inline-block h-3 w-3 rounded-full border" style={{ backgroundColor: categoryToView?.color }} />
+              <p className="text-sm text-muted-foreground">{categoryToView?.color ?? "-"}</p>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label>Created At</Label>
+            <p className="text-sm text-muted-foreground">
+              {categoryToView?.creation_date ? format(new Date(categoryToView.creation_date), "MMM d, yyyy") : "-"}
+            </p>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={handleCloseViewDialog}>
+            Close
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
 
